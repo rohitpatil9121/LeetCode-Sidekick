@@ -1,0 +1,74 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Theme tokens. Dark is the default developer-tool look. */
+:host, :root, [data-theme="dark"] {
+  --sh-bg: 17 18 22;
+  --sh-surface: 24 25 31;
+  --sh-raised: 32 33 40;
+  --sh-line: 46 48 58;
+  --sh-fg: 232 233 237;
+  --sh-muted: 150 154 166;
+  --sh-faint: 100 104 116;
+  --sh-accent: 99 152 255;
+  --sh-ok: 74 201 126;
+  --sh-warn: 240 180 60;
+  --sh-danger: 240 96 96;
+  color-scheme: dark;
+}
+
+[data-theme="light"] {
+  --sh-bg: 250 250 251;
+  --sh-surface: 255 255 255;
+  --sh-raised: 244 245 247;
+  --sh-line: 226 228 234;
+  --sh-fg: 24 25 31;
+  --sh-muted: 96 100 112;
+  --sh-faint: 140 144 156;
+  --sh-accent: 47 110 235;
+  --sh-ok: 26 150 84;
+  --sh-warn: 190 130 20;
+  --sh-danger: 210 60 60;
+  color-scheme: light;
+}
+
+.sh-root {
+  font-family: theme(fontFamily.sans);
+  font-size: 13px;
+  line-height: 1.5;
+  color: rgb(var(--sh-fg));
+  -webkit-font-smoothing: antialiased;
+}
+
+.sh-root ::-webkit-scrollbar { width: 8px; height: 8px; }
+.sh-root ::-webkit-scrollbar-thumb { background: rgb(var(--sh-line)); border-radius: 8px; }
+.sh-root ::-webkit-scrollbar-track { background: transparent; }
+
+.sh-fade-in { animation: sh-fade 160ms ease-out; }
+@keyframes sh-fade { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+
+.sh-pulse { animation: sh-pulse 1.6s ease-in-out infinite; }
+@keyframes sh-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+.sh-prose code {
+  font-family: theme(fontFamily.mono);
+  font-size: 12px;
+  background: rgb(var(--sh-raised));
+  border: 1px solid rgb(var(--sh-line));
+  border-radius: 5px;
+  padding: 1px 5px;
+}
+.sh-prose pre {
+  font-family: theme(fontFamily.mono);
+  font-size: 12px;
+  line-height: 1.55;
+  background: rgb(var(--sh-bg));
+  border: 1px solid rgb(var(--sh-line));
+  border-radius: 8px;
+  padding: 10px 12px;
+  overflow-x: auto;
+  white-space: pre;
+  margin: 8px 0 0;
+}
+.sh-prose pre code { background: none; border: 0; padding: 0; }
