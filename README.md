@@ -37,7 +37,7 @@ src/
 server/           Express backend holding the Anthropic API key
 ```
 
-The extension never holds an API key. It talks to `server/`, which talks to Anthropic.
+The extension never holds an API key. It talks to `server/`, which talks to the LLM provider (Anthropic by default, or Groq via `LLM_PROVIDER=groq`).
 
 ## Setup
 
@@ -45,7 +45,7 @@ The extension never holds an API key. It talks to `server/`, which talks to Anth
 
 ```bash
 cd server
-cp .env.example .env      # add your ANTHROPIC_API_KEY
+cp .env.example .env      # add ANTHROPIC_API_KEY, or GROQ_API_KEY + LLM_PROVIDER=groq
 npm install
 npm run dev               # http://localhost:8787
 ```

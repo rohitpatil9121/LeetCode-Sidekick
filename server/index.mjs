@@ -1,23 +1,20 @@
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
-import Anthropic from "@anthropic-ai/sdk";
-import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
+import { createProvider } from "./providers.mjs";
 import { z } from "zod/v4";
 import { buildSystemPrompt, buildUserMessage } from "./prompt.mjs";
 import { checkSpoilers } from "./spoilerGuard.mjs";
 
 /**
  * Senior's Hint backend.
- * Holds the Anthropic API key, shapes the prompt per hint level, validates
+ * Holds the provider API key, shapes the prompt per hint level, validates
  * the model's output against the anti-spoiler rules, and retries once with
  * a corrective note if the model over-shares.
  */
 
 const PORT = Number(process.env.PORT || 8787);
-const MODEL = process.env.ANTHROPIC_MODEL || "claude-opus-5";
-const EFFORT = process.env.ANTHROPIC_EFFORT || "medium";
-const API_KEY = process.env.ANTHROPIC_API_KEY;
+const provider = createProvider(process.env);
 
 const allowedOrigins = (process.env.ALLOWED_ORIGINS || "")
   .split(",")
@@ -97,12 +94,12 @@ const ResponseSchema = z.object({
 // ---- Routes ---------------------------------------------------------------
 
 app.get("/health", (_req, res) => {
-  res.json({ ok: true, model: MODEL, configured: Boolean(API_KEY) });
+  res.json({ ok: true, provider: provider.name, model: provider.model, configured: provider.configured });
 });
 
 app.post("/api/hint", async (req, res) => {
-  if (!API_KEY) {
-    return res.status(503).json({ error: "ANTHROPIC_API_KEY is not set on the server." });
+  if (!provider.configured) {
+    return res.status(503).json({ error: `No API key set for provider "${provider.name}". See server/.env.example.` });
   }
   const parsed = RequestSchema.safeParse(req.body);
   if (!parsed.success) {
@@ -117,7 +114,6 @@ app.post("/api/hint", async (req, res) => {
   const targetLevel =
     body.request.type === "next_hint" ? Math.min(body.request.targetLevel, 4) : body.request.type === "explain_problem" ? 0 : 5;
 
-  const client = new Anthropic({ apiKey: API_KEY });
   const system = buildSystemPrompt({
     targetLevel,
     personality: body.settings.personality,
@@ -127,13 +123,13 @@ app.post("/api/hint", async (req, res) => {
   const userMessage = buildUserMessage({ ...body, request: { ...body.request, targetLevel } });
 
   try {
-    let result = await generate(client, system, userMessage);
+    let result = await generate(system, userMessage);
     let check = checkSpoilers(result.message, targetLevel, body.request.type);
 
     if (!check.ok) {
       // One corrective retry, then fail closed.
       const correction = `Your previous draft violated the level rules: ${check.reasons.join("; ")}. Rewrite it for LEVEL ${targetLevel} without those elements. Reveal strictly less.`;
-      result = await generate(client, system, userMessage, [
+      result = await generate(system, userMessage, [
         { role: "assistant", content: JSON.stringify(result) },
         { role: "user", content: correction },
       ]);
@@ -152,36 +148,15 @@ app.post("/api/hint", async (req, res) => {
   }
 });
 
-async function generate(client, system, userMessage, extraTurns = []) {
-  const response = await client.messages.parse({
-    model: MODEL,
-    max_tokens: 2048,
-    system,
-    messages: [{ role: "user", content: userMessage }, ...extraTurns],
-    output_config: { effort: EFFORT, format: zodOutputFormat(ResponseSchema) },
-  });
-  if (response.stop_reason === "refusal") {
-    throw Object.assign(new Error("The model declined this request."), { status: 422 });
-  }
-  if (!response.parsed_output) {
-    throw Object.assign(new Error("Model returned an unparseable response."), { status: 502 });
-  }
-  return response.parsed_output;
+async function generate(system, userMessage, extraTurns = []) {
+  return provider.generate(system, [{ role: "user", content: userMessage }, ...extraTurns], ResponseSchema);
 }
 
 function handleApiError(err, res) {
-  if (err instanceof Anthropic.AuthenticationError) {
-    return res.status(503).json({ error: "The server's API key was rejected." });
-  }
-  if (err instanceof Anthropic.RateLimitError) {
-    return res.status(429).json({ error: "Rate limited by the model provider. Try again shortly." });
-  }
-  if (err instanceof Anthropic.APIConnectionError) {
-    return res.status(502).json({ error: "Could not reach the model provider." });
-  }
-  if (err instanceof Anthropic.APIError) {
-    console.error("[anthropic]", err.status, err.message);
-    return res.status(502).json({ error: `Model provider error (${err.status}).` });
+  const known = provider.classifyError(err);
+  if (known) {
+    console.error(`[${provider.name}]`, err.message);
+    return res.status(known[0]).json({ error: known[1] });
   }
   const status = err?.status && Number.isInteger(err.status) ? err.status : 500;
   console.error("[server]", err);
@@ -189,5 +164,5 @@ function handleApiError(err, res) {
 }
 
 app.listen(PORT, () => {
-  console.log(`Senior's Hint backend listening on http://localhost:${PORT} (model: ${MODEL}, key: ${API_KEY ? "set" : "MISSING"})`);
+  console.log(`Senior's Hint backend listening on http://localhost:${PORT} (provider: ${provider.name}, model: ${provider.model}, key: ${provider.configured ? "set" : "MISSING"})`);
 });
