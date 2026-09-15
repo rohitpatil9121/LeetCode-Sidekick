@@ -9,13 +9,13 @@ const LADDER: HintLevel[] = [0, 1, 2, 3, 4];
 /** Compact ladder rail showing where the user is. */
 export function LadderRail({ level }: { level: HintLevel | -1 }) {
   return (
-    <div className="flex items-center gap-1" aria-label={`Hint level ${level < 0 ? "none" : HINT_LEVEL_NAMES[level as HintLevel]}`}>
+    <div className="flex items-center gap-1 overflow-hidden" aria-label={`Hint level ${level < 0 ? "none" : HINT_LEVEL_NAMES[level as HintLevel]}`}>
       {LADDER.map((l) => (
         <div key={l} className="flex items-center gap-1">
           <div
             title={HINT_LEVEL_NAMES[l]}
             className={cx(
-              "flex h-5 items-center rounded-[5px] px-1.5 text-[10.5px] font-medium transition-colors",
+              "flex h-5 items-center whitespace-nowrap rounded-[5px] px-1.5 text-[10.5px] font-medium transition-colors",
               l <= level ? "bg-fg text-bg" : l === level + 1 ? "border border-line text-muted" : "text-faint",
             )}
           >
