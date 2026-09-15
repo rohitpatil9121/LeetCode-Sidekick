@@ -1,0 +1,18 @@
+{
+  "name": "seniors-hint-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Backend for Senior's Hint. Holds the Anthropic API key and enforces anti-spoiler rules server-side.",
+  "scripts": {
+    "dev": "node --watch index.mjs",
+    "start": "node index.mjs"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.125.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0",
+    "zod": "^3.23.8"
+  }
+}
