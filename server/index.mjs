@@ -3,7 +3,7 @@ import express from "express";
 import cors from "cors";
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
-import { z } from "zod";
+import { z } from "zod/v4";
 import { buildSystemPrompt, buildUserMessage } from "./prompt.mjs";
 import { checkSpoilers } from "./spoilerGuard.mjs";
 
