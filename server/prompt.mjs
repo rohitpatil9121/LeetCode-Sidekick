@@ -175,10 +175,10 @@ export function buildUserMessage(req) {
   const lines = [];
   lines.push(`# Problem: ${problem.title} (${problem.difficulty})`);
   lines.push("");
-  lines.push(problem.description);
+  lines.push(problem.description.slice(0, 3000));
   if (problem.examples?.length) {
     lines.push("", "## Examples");
-    for (const ex of problem.examples.slice(0, 3)) lines.push(ex, "");
+    for (const ex of problem.examples.slice(0, 2)) lines.push(ex.slice(0, 500), "");
   }
   if (problem.constraints?.length) {
     lines.push("## Constraints");
@@ -192,7 +192,8 @@ export function buildUserMessage(req) {
   if (request.step !== undefined) lines.push(`- Coach step: ${request.step}`);
   if (request.previousHints?.length) {
     lines.push("", "## Hints already given (do not repeat)");
-    for (const h of request.previousHints) lines.push(`- [L${h.level}] ${h.message.slice(0, 300)}`);
+    // Only the last few, trimmed: enough to avoid repetition without burning the token budget.
+    for (const h of request.previousHints.slice(-3)) lines.push(`- [L${h.level}] ${h.message.slice(0, 200)}`);
   }
   if (user.userNote) lines.push("", "## What the user says they've tried", user.userNote.slice(0, 1500));
   if (user.userAnswer) lines.push("", "## User's answer", user.userAnswer.slice(0, 1000));

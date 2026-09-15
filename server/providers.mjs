@@ -71,17 +71,28 @@ function groqProvider(env) {
     model,
     configured: Boolean(apiKey),
     async generate(system, messages, schema) {
-      const res = await fetch(`${base}/chat/completions`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-        body: JSON.stringify({
-          model,
-          temperature: 0.4,
-          max_tokens: 1500,
-          response_format: { type: "json_object" },
-          messages: [{ role: "system", content: system + "\n" + JSON_INSTRUCTION }, ...messages],
-        }),
-      });
+      const post = () =>
+        fetch(`${base}/chat/completions`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+          body: JSON.stringify({
+            model,
+            temperature: 0.4,
+            max_tokens: 1200,
+            response_format: { type: "json_object" },
+            messages: [{ role: "system", content: system + "\n" + JSON_INSTRUCTION }, ...messages],
+          }),
+        });
+
+      // The free tier is tokens-per-minute limited; honour a short "try again in X" hint once.
+      let res = await post();
+      if (res.status === 429) {
+        const wait = retryAfterMs(await res.clone().text().catch(() => ""));
+        if (wait !== null && wait <= 10_000) {
+          await new Promise((r) => setTimeout(r, wait + 250));
+          res = await post();
+        }
+      }
       if (!res.ok) {
         const text = await res.text().catch(() => "");
         throw Object.assign(new Error(`Groq ${res.status}: ${text.slice(0, 300)}`), { httpStatus: res.status });
@@ -109,6 +120,14 @@ function groqProvider(env) {
       return null;
     },
   };
+}
+
+/** Parses "Please try again in 495ms" / "6.77s" from a Groq error body. */
+function retryAfterMs(text) {
+  const m = text.match(/try again in ([\d.]+)(ms|s)/i);
+  if (!m) return null;
+  const n = parseFloat(m[1]);
+  return m[2].toLowerCase() === "ms" ? n : n * 1000;
 }
 
 function status(code, message) {
